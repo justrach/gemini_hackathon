@@ -165,6 +165,11 @@ lib/
 ├── store.ts                 # Zustand layer management
 ├── gemini.ts                # Gemini AI service
 └── utils.ts                 # Canvas utilities
+
+## 📜 Architecture Decision Records (ADR)
+
+- ADR-0001: Abuse-Resistant Access to Gemini via Middleware + Internal Proxy
+  - docs/adr/0001-abuse-resistance-proxy-guard.md
 ```
 
 ### Data Flow
