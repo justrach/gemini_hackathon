@@ -71,12 +71,17 @@ export class GeminiService {
   /**
    * Edit existing image with text prompt
    */
-  async editImage(imageBase64: string, prompt: string, mimeType: string = 'image/png'): Promise<string> {
+  async editImage(imageBase64: string, prompt: string, mimeType: string = 'image/png', targetDimensions?: {width: number, height: number}): Promise<string> {
     try {
       const model = this.ai.getGenerativeModel({ model: 'gemini-2.5-flash-image-preview' })
       
+      let fullPrompt = prompt
+      if (targetDimensions) {
+        fullPrompt = `${prompt}. Generate the output image with dimensions approximately ${targetDimensions.width}x${targetDimensions.height} pixels to match the size of other images.`
+      }
+      
       const requestParts = [
-        { text: prompt },
+        { text: fullPrompt },
         {
           inlineData: {
             mimeType,

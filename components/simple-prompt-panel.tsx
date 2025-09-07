@@ -24,44 +24,120 @@ export function SimplePromptPanel({ selectedLayerIds, lastSelectedId, onSelected
   const isEditingMode = selectedLayers.length > 0
   const isMultiEditMode = selectedLayers.length > 1
 
+  // Helper to get image dimensions from base64
+  const getImageDimensions = (base64Data: string): Promise<{width: number, height: number}> => {
+    return new Promise((resolve, reject) => {
+      const img = new Image()
+      img.onload = () => resolve({ width: img.width, height: img.height })
+      img.onerror = reject
+      const dataStr = base64Data.startsWith('data:') ? base64Data : `data:image/png;base64,${base64Data}`
+      img.src = dataStr
+    })
+  }
+
   const handleGenerate = async () => {
     if (!prompt.trim()) return
     
     setIsGenerating(true)
     try {
-      const response = await fetch('/api/gemini/generate', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+      if (selectedLayers.length === 0) {
+        // Generate new image from scratch
+        const response = await fetch('/api/gemini/generate', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            prompt,
+            mode: 'generate',
+          }),
+        })
+        
+        if (!response.ok) {
+          throw new Error(`Generation failed: ${response.statusText}`)
+        }
+        
+        const { base64 } = await response.json()
+        
+        addLayer({
+          type: 'image',
+          data: base64,
           prompt,
-          mode: selectedLayers.length > 0 ? 'edit' : 'generate',
-          images: selectedLayers.length > 0 ? selectedLayers.map(layer => ({ data: layer.data, mimeType: 'image/png' })) : undefined,
-        }),
-      })
-      
-      if (!response.ok) {
-        throw new Error(`Generation failed: ${response.statusText}`)
+          visible: true,
+          locked: false,
+          opacity: 1,
+        })
+      } else {
+        // Process multiple images individually
+        let largestDimensions = { width: 0, height: 0 }
+        
+        // Find the largest dimensions among selected images
+        for (const layer of selectedLayers) {
+          if (layer.data) {
+            try {
+              const dimensions = await getImageDimensions(layer.data)
+              if (dimensions.width * dimensions.height > largestDimensions.width * largestDimensions.height) {
+                largestDimensions = dimensions
+              }
+            } catch (error) {
+              console.warn('Failed to get dimensions for layer', layer.nodeId, error)
+            }
+          }
+        }
+        
+        // Process each selected image individually
+        const generationPromises = selectedLayers.map(async (layer, index) => {
+          try {
+            const response = await fetch('/api/gemini/generate', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                prompt,
+                mode: 'edit',
+                images: [{ data: layer.data, mimeType: 'image/png' }],
+                targetDimensions: largestDimensions.width > 0 ? largestDimensions : undefined,
+              }),
+            })
+            
+            if (!response.ok) {
+              throw new Error(`Generation failed for image ${index + 1}: ${response.statusText}`)
+            }
+            
+            const { base64 } = await response.json()
+            
+            return {
+              data: base64,
+              originalPrompt: layer.prompt || `Layer ${layer.nodeId}`,
+              index
+            }
+          } catch (error) {
+            console.error(`Error processing image ${index + 1}:`, error)
+            throw error
+          }
+        })
+        
+        // Wait for all generations to complete
+        const results = await Promise.all(generationPromises)
+        
+        // Add all generated images as new layers
+        results.forEach((result, index) => {
+          addLayer({
+            type: 'image',
+            data: result.data,
+            prompt: `${prompt} (from ${result.originalPrompt})`,
+            visible: true,
+            locked: false,
+            opacity: 1,
+          })
+        })
       }
-      
-      const { base64 } = await response.json()
-      console.log('Generated image received, base64 length:', base64?.length)
-      
-      // Add the generated image as a new layer
-      addLayer({
-        type: 'image',
-        data: base64,
-        prompt,
-        visible: true,
-        locked: false,
-        opacity: 1,
-      })
       
       setPrompt('')
     } catch (error) {
       console.error('Generation error:', error)
-      alert('Failed to generate image')
+      alert(`Failed to generate image: ${error instanceof Error ? error.message : 'Unknown error'}`)
     } finally {
       setIsGenerating(false)
     }
@@ -332,7 +408,7 @@ export function SimplePromptPanel({ selectedLayerIds, lastSelectedId, onSelected
           {isEditingMode ? (
             <>
               <Edit3 className="w-4 h-4 text-orange-500" />
-              <h3 className="text-sm font-medium text-gray-700">Edit Selected Image</h3>
+              <h3 className="text-sm font-medium text-gray-700">{isMultiEditMode ? 'Edit Selected Images' : 'Edit Selected Image'}</h3>
             </>
           ) : (
             <>
@@ -349,9 +425,12 @@ export function SimplePromptPanel({ selectedLayerIds, lastSelectedId, onSelected
                 <div className="flex items-center gap-2 mb-2">
                   <CheckSquare className="w-4 h-4 text-orange-600" />
                   <span className="text-xs text-orange-700 font-medium">
-                    Editing {selectedLayers.length} images together
+                    Editing {selectedLayers.length} images individually
                   </span>
                 </div>
+                <p className="text-xs text-orange-600 mb-2">
+                  Each image will be processed separately and new versions will be created
+                </p>
                 <div className="flex gap-1 flex-wrap">
                   {selectedLayers.slice(0, 4).map((layer, idx) => (
                     <div key={layer.nodeId} className="w-6 h-6 bg-gray-100 rounded border overflow-hidden">
@@ -395,7 +474,7 @@ export function SimplePromptPanel({ selectedLayerIds, lastSelectedId, onSelected
           onChange={(e) => setPrompt(e.target.value)}
           placeholder={isEditingMode 
             ? isMultiEditMode 
-              ? "Describe how you want to modify these images together..."
+              ? "Describe how you want to modify each of these images..."
               : "Describe how you want to modify this image..."
             : "Describe the image you want to create..."}
           className="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-500 transition-colors"
@@ -412,7 +491,15 @@ export function SimplePromptPanel({ selectedLayerIds, lastSelectedId, onSelected
                 : 'bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 text-white'
             } disabled:cursor-not-allowed`}
           >
-            {isGenerating ? 'Processing...' : isEditingMode ? 'Edit Image' : 'Generate Image'}
+            {isGenerating 
+              ? isMultiEditMode 
+                ? `Processing ${selectedLayers.length} images...`
+                : 'Processing...'
+              : isEditingMode 
+                ? isMultiEditMode 
+                  ? `Edit ${selectedLayers.length} Images`
+                  : 'Edit Image'
+                : 'Generate Image'}
           </button>
           
           {isEditingMode && (

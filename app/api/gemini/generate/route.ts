@@ -3,7 +3,7 @@ import { getGeminiService } from '@/lib/gemini'
 
 export async function POST(request: NextRequest) {
   try {
-    const { prompt, images, mode = 'generate' } = await request.json()
+    const { prompt, images, mode = 'generate', targetDimensions } = await request.json()
     
     if (!prompt) {
       return NextResponse.json(
@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
             { status: 400 }
           )
         }
-        imageData = await gemini.editImage(images[0].data, prompt, images[0].mimeType)
+        imageData = await gemini.editImage(images[0].data, prompt, images[0].mimeType, targetDimensions)
         break
         
       case 'compose':
