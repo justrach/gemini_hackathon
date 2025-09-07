@@ -1,8 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getGeminiService } from '@/lib/gemini'
 
+const SECRET_HASH = '85ee0a054f8f053342b0b9131026b455'
+
 export async function POST(request: NextRequest) {
   try {
+    const authHeader = request.headers.get('x-internal-auth')
+    if (authHeader !== SECRET_HASH) {
+      return NextResponse.json(
+        { error: 'Unauthorized access' },
+        { status: 401 }
+      )
+    }
+
     const { prompt, images, mode = 'generate', targetDimensions } = await request.json()
     
     if (!prompt) {

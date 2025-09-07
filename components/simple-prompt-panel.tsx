@@ -42,7 +42,7 @@ export function SimplePromptPanel({ selectedLayerIds, lastSelectedId, onSelected
     try {
       if (selectedLayers.length === 0) {
         // Generate new image from scratch
-        const response = await fetch('/api/gemini/generate', {
+        const response = await fetch('/api/gemini/proxy', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -88,7 +88,7 @@ export function SimplePromptPanel({ selectedLayerIds, lastSelectedId, onSelected
         // Process each selected image individually
         const generationPromises = selectedLayers.map(async (layer, index) => {
           try {
-            const response = await fetch('/api/gemini/generate', {
+            const response = await fetch('/api/gemini/proxy', {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',

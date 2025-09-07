@@ -9,7 +9,7 @@
         "@radix-ui/react-slot": "^1.2.3",
         "class-variance-authority": "^0.7.1",
         "clsx": "^2.1.1",
-        "corlena": "^1.3.0",
+        "corlena": "^1.3.1",
         "lucide-react": "^0.542.0",
         "next": "15.5.2",
         "react": "19.1.0",
@@ -342,7 +342,7 @@
 
     "concat-map": ["concat-map@0.0.1", "", {}, "sha512-/Srv4dswyQNBfohGpz9o6Yb3Gz3SrUDqBH5rTuhGR7ahtlbYKnVxw2bCFMRljaA7EXHaXZ8wsHdodFvbkhKmqg=="],
 
-    "corlena": ["corlena@1.3.0", "", { "dependencies": { "@corlena/wasm": "^0.0.3" }, "peerDependencies": { "react": "^18 || ^19", "svelte": "^4 || ^5" }, "optionalPeers": ["react", "svelte"] }, "sha512-JUsUGRth85sPG+f4Du43y3e/Nlo/UB4sMA+NP2+4HYHnVgK4oJCcP3UCFuPxnQZRkgMsq0JbDt82FmN25psF6g=="],
+    "corlena": ["corlena@1.3.1", "", { "dependencies": { "@corlena/wasm": "^0.0.3" }, "peerDependencies": { "react": "^18 || ^19", "svelte": "^4 || ^5" }, "optionalPeers": ["react", "svelte"] }, "sha512-l0FGTNbZCl8KpAWRh+YJyy+lqZH3mzQz1Pk1FUSJd6awnLrpBJB+LhZ2QHmnYSqNND3mUUhtO2+65nl9+cWJMg=="],
 
     "cross-spawn": ["cross-spawn@7.0.6", "", { "dependencies": { "path-key": "^3.1.0", "shebang-command": "^2.0.0", "which": "^2.0.1" } }, "sha512-uV2QOWP2nWzsy2aMp8aRibhi9dlzF5Hgh5SHaB9OiTGEyDTiJJyx0uy51QXdyWbtAHNua4XJzUKca3OzKUd3vA=="],
 
