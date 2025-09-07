@@ -32,12 +32,43 @@ Introduce a SameSite/HttpOnly session cookie via middleware and route all browse
 - `app/api/gemini/generate/route.ts` (internal-only)
   - Rejects any request missing/invalid `x-internal-auth`.
 
+## Implementation Details
+
+- Cookie attributes:
+  - `HttpOnly` prevents JS access; reduces token exfiltration risk.
+  - `SameSite=Strict` limits cross-site sends; mitigates CSRF-style abuse.
+  - `secure` is enabled in production; `path=/`; `maxAge=7d`.
+  - Only set for non-API routes; API requests receive but do not trigger cookie issuance.
+
+- Proxy validation flow:
+  1) Compute request origin from URL; compare with `Origin` or `Referer` header.
+  2) Check presence/value of `cg_session` cookie.
+  3) Enforce JSON `Content-Type`.
+  4) Forward to internal endpoint over same host with `x-internal-auth`.
+  5) Return upstream status and JSON body.
+
+- Internal generation handler:
+  - Verifies `x-internal-auth` equals server-held secret before work begins.
+  - Uses server-side Gemini client; API key stays on server.
+
 ## Consequences
 
 - Public endpoint is significantly harder to script from other sites (SameSite=Strict + origin checks).
 - The internal generation route is not callable by the browser directly.
 - Slight additional hop (proxy) adds minimal latency, but improves safety.
 - Frontend should call `/api/gemini/proxy` instead of `/api/gemini/generate`.
+
+## Security Considerations
+
+- Strengths:
+  - Same-origin + SameSite cookie checks raise the bar for off-origin abuse.
+  - Internal-only hop avoids trusting client-sent secrets for protected work.
+  - Content-Type pinning reduces accidental surface for other encodings.
+
+- Limitations:
+  - Not a substitute for authentication/authorization.
+  - No rate limiting or IP throttling yet.
+  - The internal secret is currently in code; should be an env var.
 
 ## Follow-ups
 
