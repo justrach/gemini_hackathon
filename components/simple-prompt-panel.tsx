@@ -3,7 +3,7 @@
 import { useCallback, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { useCorlenaCanvas } from '@/lib/corlena-state'
-import { Trash2, Eye, EyeOff, Lock, Unlock, Upload, ImageIcon, Sparkles } from 'lucide-react'
+import { Trash2, Eye, EyeOff, Lock, Unlock, Upload, ImageIcon, Sparkles, Plus, Edit3 } from 'lucide-react'
 
 interface SimplePromptPanelProps {
   selectedLayerId?: number | null
@@ -14,11 +14,13 @@ export function SimplePromptPanel({ selectedLayerId, onSelectedLayerChange }: Si
   const [prompt, setPrompt] = useState('')
   const [isGenerating, setIsGenerating] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
+  const [isDragOver, setIsDragOver] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { addLayer, getAllLayers, updateLayer, toggleNodeSelection } = useCorlenaCanvas()
   
   const layers = getAllLayers()
   const selectedLayer = selectedLayerId ? layers.find(l => l.nodeId === selectedLayerId) : null
+  const isEditingMode = !!selectedLayer
 
   const handleGenerate = async () => {
     if (!prompt.trim()) return
@@ -105,6 +107,25 @@ export function SimplePromptPanel({ selectedLayerId, onSelectedLayerChange }: Si
   
   const handleUploadClick = () => {
     fileInputRef.current?.click()
+  }
+  
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragOver(true)
+  }
+  
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragOver(false)
+  }
+  
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragOver(false)
+    const files = e.dataTransfer.files
+    if (files.length > 0) {
+      handleFileUpload(files)
+    }
   }
   
   const handleExportCanvas = useCallback(async () => {
@@ -219,13 +240,126 @@ export function SimplePromptPanel({ selectedLayerId, onSelectedLayerChange }: Si
         <p className="text-sm text-gray-600">Create and edit images with AI</p>
       </div>
 
+      {/* Getting Started Guide */}
+      {layers.length === 0 && (
+        <div className="p-4 border-b border-gray-100 bg-blue-50">
+          <h3 className="text-sm font-semibold text-blue-900 mb-2 flex items-center gap-2">
+            <Sparkles className="w-4 h-4" />
+            Get Started
+          </h3>
+          <div className="space-y-2 text-xs text-blue-800">
+            <div className="flex items-start gap-2">
+              <span className="flex-shrink-0 w-4 h-4 bg-blue-200 text-blue-900 rounded-full flex items-center justify-center text-xs font-bold">1</span>
+              <span><strong>Upload images</strong> or <strong>generate new ones</strong> using AI</span>
+            </div>
+            <div className="flex items-start gap-2">
+              <span className="flex-shrink-0 w-4 h-4 bg-blue-200 text-blue-900 rounded-full flex items-center justify-center text-xs font-bold">2</span>
+              <span><strong>Click any image</strong> to select and edit it</span>
+            </div>
+            <div className="flex items-start gap-2">
+              <span className="flex-shrink-0 w-4 h-4 bg-blue-200 text-blue-900 rounded-full flex items-center justify-center text-xs font-bold">3</span>
+              <span><strong>Describe changes</strong> to edit the selected image</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Upload Section - More Prominent When No Images */}
+      {layers.length === 0 ? (
+        <div 
+          className={`p-4 border-b border-gray-200 transition-colors ${
+            isDragOver ? 'bg-blue-50 border-blue-300' : 'bg-white'
+          }`}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+        >
+          <h3 className="text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
+            <Upload className="w-4 h-4" />
+            Upload Images
+          </h3>
+          <div 
+            className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors ${
+              isDragOver 
+                ? 'border-blue-400 bg-blue-50' 
+                : 'border-gray-300 hover:border-gray-400 hover:bg-gray-50'
+            }`}
+            onClick={handleUploadClick}
+          >
+            <Upload className={`mx-auto w-8 h-8 mb-2 transition-colors ${
+              isDragOver ? 'text-blue-500' : 'text-gray-400'
+            }`} />
+            <p className="text-sm font-medium text-gray-700 mb-1">
+              {isDragOver ? 'Drop images here' : 'Click to upload or drag & drop'}
+            </p>
+            <p className="text-xs text-gray-500">
+              Supports multiple images • PNG, JPG, GIF, WebP
+            </p>
+            {isUploading && (
+              <p className="text-xs text-blue-600 mt-2 font-medium">Uploading...</p>
+            )}
+          </div>
+        </div>
+      ) : (
+        <div className="p-4 border-b border-gray-200">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-medium text-gray-700 flex items-center gap-2">
+              <Upload className="w-4 h-4" />
+              Add More Images
+            </h3>
+          </div>
+          <button
+            onClick={handleUploadClick}
+            disabled={isUploading}
+            className="w-full px-3 py-2 bg-gray-100 hover:bg-gray-200 disabled:bg-gray-50 text-gray-700 rounded-md transition-colors border border-gray-200 text-sm flex items-center justify-center gap-2"
+          >
+            <Plus className="w-4 h-4" />
+            {isUploading ? 'Uploading...' : 'Upload Images'}
+          </button>
+        </div>
+      )}
+
       {/* Prompt Section */}
       <div className="p-4 border-b border-gray-200">
-        <h3 className="text-sm font-medium text-gray-700 mb-3">Generate</h3>
+        <div className="flex items-center gap-2 mb-3">
+          {isEditingMode ? (
+            <>
+              <Edit3 className="w-4 h-4 text-orange-500" />
+              <h3 className="text-sm font-medium text-gray-700">Edit Selected Image</h3>
+            </>
+          ) : (
+            <>
+              <Sparkles className="w-4 h-4 text-blue-500" />
+              <h3 className="text-sm font-medium text-gray-700">Generate New Image</h3>
+            </>
+          )}
+        </div>
+        
+        {isEditingMode && selectedLayer && (
+          <div className="mb-3 p-2 bg-orange-50 border border-orange-200 rounded-md">
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 bg-gray-100 rounded border overflow-hidden">
+                {selectedLayer.type === 'image' && selectedLayer.data && (
+                  <img 
+                    src={selectedLayer.data.startsWith('data:') ? selectedLayer.data : `data:image/png;base64,${selectedLayer.data}`}
+                    alt="Selected"
+                    className="w-full h-full object-cover"
+                  />
+                )}
+              </div>
+              <span className="text-xs text-orange-700 font-medium">
+                Editing Layer {selectedLayer.nodeId}
+              </span>
+            </div>
+          </div>
+        )}
+        
         <textarea
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
-          placeholder="Describe the image you want to create..."
+          placeholder={isEditingMode 
+            ? "Describe how you want to modify this image..." 
+            : "Describe the image you want to create..."}
           className="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-500 transition-colors"
           rows={3}
         />
@@ -234,16 +368,23 @@ export function SimplePromptPanel({ selectedLayerId, onSelectedLayerChange }: Si
           <button
             onClick={handleGenerate}
             disabled={isGenerating || !prompt.trim()}
-            className="flex-1 px-4 py-2 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-medium rounded-md transition-colors text-sm"
+            className={`flex-1 px-4 py-2 font-medium rounded-md transition-colors text-sm ${
+              isEditingMode 
+                ? 'bg-orange-500 hover:bg-orange-600 disabled:bg-gray-300 text-white'
+                : 'bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 text-white'
+            } disabled:cursor-not-allowed`}
           >
-            {isGenerating ? 'Generating...' : 'Generate'}
+            {isGenerating ? 'Processing...' : isEditingMode ? 'Edit Image' : 'Generate Image'}
           </button>
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            className="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-md transition-colors border border-gray-200"
-          >
-            <Upload className="w-4 h-4" />
-          </button>
+          
+          {isEditingMode && (
+            <button
+              onClick={() => onSelectedLayerChange?.(null)}
+              className="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-md transition-colors border border-gray-200 text-sm"
+            >
+              Cancel
+            </button>
+          )}
         </div>
       </div>
       
