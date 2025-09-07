@@ -9,7 +9,8 @@ import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 
 export default function Home() {
-  const [selectedLayerId, setSelectedLayerId] = useState<number | null>(null)
+  const [selectedLayerIds, setSelectedLayerIds] = useState<number[]>([])
+  const [lastSelectedId, setLastSelectedId] = useState<number | null>(null)
   
   useEffect(() => {
     // Check if Gemini API key is available
@@ -52,14 +53,29 @@ export default function Home() {
             <div className="flex-1 relative">
               <CorlenaCanvasViewport 
                 className="w-full h-full" 
-                selectedLayerId={selectedLayerId}
-                onSelectedLayerChange={setSelectedLayerId}
+                selectedLayerId={selectedLayerIds[0] || null}
+                onSelectedLayerChange={(layerId) => {
+                  if (layerId) {
+                    setSelectedLayerIds([layerId])
+                    setLastSelectedId(layerId)
+                  } else {
+                    setSelectedLayerIds([])
+                    setLastSelectedId(null)
+                  }
+                }}
               />
             </div>
             
             {/* Side Panel */}
             <div className="w-80 border-l border-gray-200">
-              <SimplePromptPanel selectedLayerId={selectedLayerId} />
+              <SimplePromptPanel 
+                selectedLayerIds={selectedLayerIds}
+                lastSelectedId={lastSelectedId}
+                onSelectedLayerChange={(layerIds, lastId) => {
+                  setSelectedLayerIds(layerIds)
+                  setLastSelectedId(lastId)
+                }}
+              />
             </div>
           </CorlenaCanvasProvider>
         </SceneProvider>
